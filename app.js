@@ -166,6 +166,7 @@ async function getRandomUsers(number) {
 async function getCommentsByTweetId(tweetId) {
    return Comment.find({tweetId: tweetId}).sort({createdAt: -1});
 }
+
 app.get('/api/tweets/:id/comments', async function (req, res) {
     const tweetId = req.params.id;
 
