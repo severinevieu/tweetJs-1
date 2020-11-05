@@ -1,3 +1,9 @@
+// on récupére notre router
+const commentRouter = require('./routers/comment.router');
+// on indique à notre app de l'utiliser
+app.use('/', commentRouter);
+
+
 // on récupére notre dépendance externe - ici express.
 const express = require('express');
 const logger = require('morgan');
@@ -28,22 +34,83 @@ app.set('view engine', 'hbs');
 // on indique que nos vues se trouverons toujours dans le dossier views 
 app.set('views', path.join(__dirname, 'views'));
 
-// on récupére notre router
-const commentRouter = require('./routers/comment.router');
-const tweetRouter = require('./routers/tweet.router');
-
-// on indique les routers à ajouter !
-app.use('/', commentRouter);
-app.use('/', tweetRouter);
-
 // notre première route !
 // on envoi un Hello World si la requête est sur la racine.
 app.get('/', (req, res) => {
     res.render('index', { name: 'TweetJs' });
 });
 
+app.get('/tweets/new', (req, res) => {
+    res.render('new');
+});
 
+app.get('/tweets', async(req, res) => {
+    //Pour retourner un user specifique
+    //const tweets = await tweet.find({user:'Ribery'});
+    //Pour tout retourner
+    const tweets = await tweet.find({}).sort({createdAt: -1});
+    res.render('tweets', { tweets });
+})
 
+/* Definit dans controler
+app.get('/tweets/:id', async (req, res) => {
+    const id = req.params.id;
+    const tweet = await Tweet.findById(id);
+    // ajout comment
+    const comments = await getCommentsByTweetId(id);
+    const users = await getRandomUsers(3);
+    //avant recupération modèle
+    // const tweet = tweets.find((elem) => {
+    //     return elem.id === id;
+    // });
+    res.render('tweet', { tweet: tweet, users: users });
+}); */
+
+app.post('/tweets', async(req, res) => {
+    const paramTweet = req.body;
+    //plus besoin avec mongo
+    // tweet.id = uuidv4();
+    // tweets.push(tweet);
+    const tweet = new Tweet({
+        title: paramTweet.title,
+        content: paramTweet.content,
+        user: paramTweet.user,
+        createdAt: new Date(),
+    });
+    await tweet.save();
+    res.redirect('/tweets');
+});
+
+/* Rediriger dans router
+//POST comment dans mongodb
+app.post('/api/tweets/:id/comments', async(req, res) => {
+    const tweetId = req.params.id;
+    const paramComment = req.body;
+
+    //Gestion des erreurs
+    let tweet;
+    try {
+        tweet = await Tweet.findById(tweetId);
+    } catch (err) {
+        console.error('oops une erreur ', err);
+        return res.status(400).send(err.message);
+    }
+
+    if (!tweet) {
+        console.error('tweet not found !');
+        return res.status(404).send();
+    }
+    
+    //création comment
+    const comment = new Comment({
+        user: paramComment.user,
+        comment: paramComment.comment,
+        createdAt: new Date(),
+        tweetId: tweetId
+    });
+    const createdComm = await comment.save();
+    res.send(createdComm);
+}); */
 
 // on écoute sur notre port.
 app.listen(port, () => {
@@ -103,5 +170,23 @@ async function getRandomUsers(number) {
     return users;
 }
 
+//GET all comment
+async function getCommentsByTweetId(tweetId) {
+   return Comment.find({tweetId: tweetId}).sort({createdAt: -1});
+}
 
+app.get('/api/tweets/:id/comments', async function (req, res) {
+    const tweetId = req.params.id;
+
+    let comments;
+    try {
+        // on appelle notre fonction que l'on `await`
+        comments = await getCommentsByTweetId(tweetId);
+    } catch (err) {
+        console.error('oops une erreur ', err);
+        return res.status(400).send(err.message);
+    }
+
+    res.send(comments);
+});
 
