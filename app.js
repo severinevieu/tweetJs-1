@@ -2,15 +2,22 @@
 const express = require('express');
 const logger = require('morgan');
 const path = require('path');
-const tweets = require('./tweets.json');
-const { v4: uuidv4 } = require('uuid');
+/* const tweets = require('./tweets.json');
+const { v4: uuidv4 } = require('uuid'); */
 const axios = require('axios');
 const { response } = require('express');
+const connect = require('./database/mongodb');
+
+// on supprime la ligne qui importait notre fichier json et celle du uuid ! Mongodb génére automatiquement les ids
+const Tweet = require('./models/tweet');
+const tweet = require('./models/tweet');
 
 // on construit notre application qui nous servira à créer nos routes
 const app = express();
 // on donne un port sur lequel notre serveur écoute
 const port = 3000;
+
+connect();
 
 app.use(logger('dev'));
 app.use(express.json());
@@ -30,7 +37,11 @@ app.get('/tweets/new', (req, res) => {
     res.render('new');
 });
 
-app.get('/tweets', (req, res) => {
+app.get('/tweets', async(req, res) => {
+    //Pour retoruner un useur specifique
+    //const tweets = await tweet.find({user:'Ribery'});
+    //Pour tout retourner
+    const tweets = await tweet.find({});
     res.render('tweets', { tweets });
 })
 
@@ -111,3 +122,4 @@ async function getRandomUsers(number) {
 
     return users;
 }
+
