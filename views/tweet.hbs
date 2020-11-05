@@ -16,4 +16,12 @@
     {{else}}
     <p><b>Aucun utilisateurs n'a aimé ce tweet :-(</b></p>
     {{/if}}
+    {{#if comments}}
+    <p><b>Commentaires :</b></p>
+    {{#each comments}}
+        <p>{{user}} : {{comment}}</p>
+    {{/each}}
+{{else}}
+    <p><b>Personne n'a commenté ce tweet :-(</b></p>
+{{/if}}
 </div>

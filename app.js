@@ -7,6 +7,7 @@ const { v4: uuidv4 } = require('uuid'); */
 const axios = require('axios');
 const { response } = require('express');
 const connect = require('./database/mongodb');
+const Comment = require('./models/comment');
 
 // on supprime la ligne qui importait notre fichier json et celle du uuid ! Mongodb génére automatiquement les ids
 const Tweet = require('./models/tweet');
@@ -38,31 +39,69 @@ app.get('/tweets/new', (req, res) => {
 });
 
 app.get('/tweets', async(req, res) => {
-    //Pour retoruner un useur specifique
+    //Pour retourner un user specifique
     //const tweets = await tweet.find({user:'Ribery'});
     //Pour tout retourner
-    const tweets = await tweet.find({});
+    const tweets = await tweet.find({}).sort({createdAt: -1});
     res.render('tweets', { tweets });
 })
 
 app.get('/tweets/:id', async (req, res) => {
     const id = req.params.id;
-
-    // ici aussi on `await` bien la fonction asynchrone ! 
+    const tweet = await Tweet.findById(id);
+    // ajout comment
+    const comments = await getCommentsByTweetId(id);
     const users = await getRandomUsers(3);
-
-    const tweet = tweets.find((elem) => {
-        return elem.id === id;
-    });
-
+    //avant recupération modèle
+    // const tweet = tweets.find((elem) => {
+    //     return elem.id === id;
+    // });
     res.render('tweet', { tweet: tweet, users: users });
 });
 
-app.post('/tweets', (req, res) => {
-    const tweet = req.body;
-    tweet.id = uuidv4();
-    tweets.push(tweet);
+app.post('/tweets', async(req, res) => {
+    const paramTweet = req.body;
+    //plus besoin avec mongo
+    // tweet.id = uuidv4();
+    // tweets.push(tweet);
+    const tweet = new Tweet({
+        title: paramTweet.title,
+        content: paramTweet.content,
+        user: paramTweet.user,
+        createdAt: new Date(),
+    });
+    await tweet.save();
     res.redirect('/tweets');
+});
+
+//POST comment dans mongodb
+app.post('/api/tweets/:id/comments', async(req, res) => {
+    const tweetId = req.params.id;
+    const paramComment = req.body;
+
+    //Gestion des erreurs
+    let tweet;
+    try {
+        tweet = await Tweet.findById(tweetId);
+    } catch (err) {
+        console.error('oops une erreur ', err);
+        return res.status(400).send(err.message);
+    }
+
+    if (!tweet) {
+        console.error('tweet not found !');
+        return res.status(404).send();
+    }
+    
+    //création comment
+    const comment = new Comment({
+        user: paramComment.user,
+        comment: paramComment.comment,
+        createdAt: new Date(),
+        tweetId: tweetId
+    });
+    const createdComm = await comment.save();
+    res.send(createdComm);
 });
 
 // on écoute sur notre port.
@@ -122,4 +161,23 @@ async function getRandomUsers(number) {
 
     return users;
 }
+
+//GET all comment
+async function getCommentsByTweetId(tweetId) {
+   return Comment.find({tweetId: tweetId}).sort({createdAt: -1});
+}
+app.get('/api/tweets/:id/comments', async function (req, res) {
+    const tweetId = req.params.id;
+
+    let comments;
+    try {
+        // on appelle notre fonction que l'on `await`
+        comments = await getCommentsByTweetId(tweetId);
+    } catch (err) {
+        console.error('oops une erreur ', err);
+        return res.status(400).send(err.message);
+    }
+
+    res.send(comments);
+});
 
